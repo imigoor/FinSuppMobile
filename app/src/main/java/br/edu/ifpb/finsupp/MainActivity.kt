@@ -11,9 +11,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import br.edu.ifpb.finsupp.ui.screens.AccountsScreen
 import br.edu.ifpb.finsupp.ui.screens.AddAccountScreen
+import br.edu.ifpb.finsupp.ui.screens.AddTransactionScreen
 import br.edu.ifpb.finsupp.ui.screens.EditAccountScreen
 import br.edu.ifpb.finsupp.ui.screens.HomeScreen
 import br.edu.ifpb.finsupp.ui.screens.LoginScreen
+import br.edu.ifpb.finsupp.ui.screens.TransactionsScreen
 import br.edu.ifpb.finsupp.ui.theme.FinSuppTheme
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +55,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToAccounts = {
                                 navController.navigate("accounts/$nome")
+                            },
+                            onNavigateToTransactions = {
+                                navController.navigate("transactions/$nome")
                             }
                         )
                     }
@@ -75,6 +80,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateToEditAccount = { account ->
                                 val route = "edit_account/${account.id}/${account.description}/${account.bank}/${account.accountType}/${account.balance.toFloat()}/${account.closingDay}/${account.paymentDueDay}"
                                 navController.navigate(route)
+                            },
+                            onNavigateToTransactions = {
+                                navController.navigate("transactions/$nome")
                             }
                         )
                     }
@@ -111,6 +119,33 @@ class MainActivity : ComponentActivity() {
                             initialDue = entry.arguments?.getInt("due") ?: 1,
                             onBack = { navController.popBackStack() },
                             onUpdateSuccess = { navController.popBackStack() }
+                        )
+                    }
+
+                    // ROTA 5: TRANSACOES
+                    composable(
+                        route = "transactions/{name}",
+                        arguments = listOf(navArgument("name") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val nome = backStackEntry.arguments?.getString("name") ?: "Usuário"
+                        TransactionsScreen(
+                            userName = nome,
+                            onNavigateToHome = { navController.navigate("home/$nome") },
+                            onNavigateToAccounts = { navController.navigate("accounts/$nome") },
+                            onNavigateToAdd = { navController.navigate("add_transaction") },
+                            onLogout = {
+                                navController.navigate("login") { popUpTo("home/{name}") { inclusive = true } }
+                            },
+                            onNavigateToTransactions = {
+                                navController.navigate("transactions/$nome")
+                            }
+                        )
+                    }
+
+                    // ROTA 6: ADICIONAR TRANSACAO
+                    composable("add_transaction") {
+                        AddTransactionScreen(
+                            onBack = { navController.popBackStack() }
                         )
                     }
                 }

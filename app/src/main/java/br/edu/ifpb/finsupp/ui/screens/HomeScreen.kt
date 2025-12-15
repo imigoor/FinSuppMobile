@@ -27,7 +27,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     userName: String,
     onLogout: () -> Unit,
-    onNavigateToAccounts: () -> Unit
+    onNavigateToAccounts: () -> Unit,
+    onNavigateToTransactions: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -40,6 +41,12 @@ fun HomeScreen(
                 scope = scope,
                 onNavigateToHome = { scope.launch { drawerState.close() } },
                 onNavigateToAccounts = onNavigateToAccounts,
+                onNavigateToTransactions = { // <--- Conectado aqui
+                    scope.launch {
+                        drawerState.close()
+                        onNavigateToTransactions()
+                    }
+                },
                 onLogout = onLogout
             )
         },

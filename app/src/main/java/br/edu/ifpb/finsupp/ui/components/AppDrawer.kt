@@ -22,6 +22,7 @@ fun AppDrawer(
     scope: CoroutineScope,
     onNavigateToHome: () -> Unit,
     onNavigateToAccounts: () -> Unit,
+    onNavigateToTransactions: () -> Unit,
     onLogout: () -> Unit
 ) {
     ModalDrawerSheet(
@@ -68,7 +69,12 @@ fun AppDrawer(
         DrawerItem(
             icon = Icons.Default.SwapHoriz,
             label = "Transactions",
-            onClick = { scope.launch { drawerState.close() } } // Futuro
+            onClick = {
+                scope.launch {
+                    drawerState.close()
+                    onNavigateToTransactions()
+                }
+            }
         )
 
         Spacer(modifier = Modifier.weight(1f))
