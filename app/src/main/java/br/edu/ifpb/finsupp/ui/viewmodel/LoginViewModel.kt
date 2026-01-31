@@ -8,75 +8,80 @@ import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
 import br.edu.ifpb.finsupp.network.TokenManager
 import br.edu.ifpb.finsupp.network.service.AuthApi
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.LoginUiState
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
 class LoginViewModel(private val api: AuthApi) : ViewModel() {
-    var email by mutableStateOf("")
-    var password by mutableStateOf("")
-    var registerName by mutableStateOf("")
-    var registerEmail by mutableStateOf("")
-    var registerPassword by mutableStateOf("")
-    var isLoading by mutableStateOf(false)
-    var loginError by mutableStateOf<String?>(null)
-    var loginSuccess by mutableStateOf(false)
 
-    var userName by mutableStateOf("")
+    var uiState by mutableStateOf(LoginUiState())
+        private set
+
+    fun updateEmail(v: String) { uiState = uiState.copy(email = v) }
+    fun updatePassword(v: String) { uiState = uiState.copy(password = v) }
+    fun updateRegisterName(v: String) { uiState = uiState.copy(registerName = v) }
+    fun updateRegisterEmail(v: String) { uiState = uiState.copy(registerEmail = v) }
+    fun updateRegisterPassword(v: String) { uiState = uiState.copy(registerPassword = v) }
+
+    // reseta o flag de sucesso após navegação
+    fun onLoginSuccessHandled() { uiState = uiState.copy(loginSuccess = false) }
 
     fun performLogin() {
-        if (email.isBlank() || password.isBlank()) {
-            loginError = "Preencha todos os campos"
+        if (uiState.email.isBlank() || uiState.password.isBlank()) {
+            uiState = uiState.copy(loginError = "Preencha todos os campos")
             return
         }
         viewModelScope.launch {
-            isLoading = true
-            loginError = null
+            uiState = uiState.copy(isLoading = true, loginError = null)
             try {
-                val request = LoginRequest(email, password)
+                val request = LoginRequest(uiState.email, uiState.password)
                 val response = api.login(request)
-                //val response = RetrofitClient.api.login(request)
 
                 if (response.isSuccessful && response.body()?.type == "Success") {
                     val userData = response.body()?.data
                     TokenManager.token = userData?.token
-                    userName = userData?.name ?: "Usuário"
-                    loginSuccess = true
+
+                    uiState = uiState.copy(
+                        userName = userData?.name ?: "Usuário",
+                        loginSuccess = true
+                    )
                 } else {
                     tratarErro(response.errorBody()?.string(), response.code())
                 }
             } catch (e: Exception) {
-                loginError = "Falha na conexão: ${e.message}"
+                uiState = uiState.copy(loginError = "Falha na conexão: ${e.message}")
             } finally {
-                isLoading = false
+                uiState = uiState.copy(isLoading = false)
             }
         }
     }
 
     fun performRegister() {
-        if (registerName.isBlank() || registerEmail.isBlank() || registerPassword.isBlank()) {
-            loginError = "Preencha todos os campos"
+        if (uiState.registerName.isBlank() || uiState.registerEmail.isBlank() || uiState.registerPassword.isBlank()) {
+            uiState = uiState.copy(loginError = "Preencha todos os campos")
             return
         }
         viewModelScope.launch {
-            isLoading = true
-            loginError = null
+            uiState = uiState.copy(isLoading = true, loginError = null)
             try {
-                val request = RegisterRequest(registerName, registerEmail, registerPassword)
+                val request = RegisterRequest(uiState.registerName, uiState.registerEmail, uiState.registerPassword)
                 val response = api.register(request)
-                //val response = RetrofitClient.api.register(request)
 
                 if (response.isSuccessful) {
                     val userData = response.body()?.data
                     TokenManager.token = userData?.token
-                    userName = userData?.name ?: registerName
-                    loginSuccess = true
+
+                    uiState = uiState.copy(
+                        userName = userData?.name ?: uiState.registerName,
+                        loginSuccess = true
+                    )
                 } else {
                     tratarErro(response.errorBody()?.string(), response.code())
                 }
             } catch (e: Exception) {
-                loginError = "Falha na conexão: ${e.message}"
+                uiState = uiState.copy(loginError = "Falha na conexão: ${e.message}")
             } finally {
-                isLoading = false
+                uiState = uiState.copy(isLoading = false)
             }
         }
     }
@@ -86,12 +91,12 @@ class LoginViewModel(private val api: AuthApi) : ViewModel() {
             try {
                 val gson = Gson()
                 val errorResponse = gson.fromJson(errorJson, LoginResponse::class.java)
-                loginError = errorResponse.message
+                uiState = uiState.copy(loginError = errorResponse.message)
             } catch (e: Exception) {
-                loginError = "Erro ao processar resposta"
+                uiState = uiState.copy(loginError = "Erro ao processar resposta")
             }
         } else {
-            loginError = "Erro na operação ($code)"
+            uiState = uiState.copy(loginError = "Erro na operação ($code)")
         }
     }
 }

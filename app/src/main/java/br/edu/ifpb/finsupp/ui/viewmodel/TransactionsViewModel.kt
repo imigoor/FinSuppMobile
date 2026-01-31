@@ -7,31 +7,31 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.TransactionApiData
 import br.edu.ifpb.finsupp.network.service.TransactionApi
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.TransactionsUiState
 import kotlinx.coroutines.launch
 
 class TransactionsViewModel(private val api: TransactionApi) : ViewModel() {
-    var uiTransactions by mutableStateOf<List<TransactionApiData>>(emptyList())
-        private set
-    var isLoading by mutableStateOf(false)
-        private set
-    var toastMessage by mutableStateOf<String?>(null)
+
+    var uiState by mutableStateOf(TransactionsUiState())
         private set
 
     fun loadData() {
         viewModelScope.launch {
-            isLoading = true
+            uiState = uiState.copy(isLoading = true)
             try {
                 //val response = RetrofitClient.transactionApi.getTransactions()
                 val response = api.getTransactions()
                 if (response.isSuccessful) {
-                    uiTransactions = response.body()?.dataList ?: emptyList()
+                    uiState = uiState.copy(
+                        uiTransactions = response.body()?.dataList ?: emptyList()
+                    )
                 } else {
-                    toastMessage = "Erro ao carregar transações"
+                    uiState = uiState.copy(toastMessage = "Sem transações para mostrar")
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro de conexão"
+                uiState = uiState.copy(toastMessage = "Erro de conexão")
             } finally {
-                isLoading = false
+                uiState = uiState.copy(isLoading = false)
             }
         }
     }
@@ -42,16 +42,18 @@ class TransactionsViewModel(private val api: TransactionApi) : ViewModel() {
                 //val response = RetrofitClient.transactionApi.deleteTransaction(id)
                 val response = api.deleteTransaction(id)
                 if (response.isSuccessful) {
-                    toastMessage = "Transação removida"
+                    uiState = uiState.copy(toastMessage = "Transação removida")
                     loadData() // Recarrega a lista
                 } else {
-                    toastMessage = "Erro ao deletar"
+                    uiState = uiState.copy(toastMessage = "Erro ao deletar")
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro de conexão"
+                uiState = uiState.copy(toastMessage = "Erro de conexão")
             }
         }
     }
 
-    fun clearToastMessage() { toastMessage = null }
+    fun clearToastMessage() {
+        uiState = uiState.copy(toastMessage = null)
+    }
 }

@@ -39,10 +39,13 @@ fun TransactionsScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val state = viewModel.uiState
+
     LaunchedEffect(Unit) { viewModel.loadData() }
 
-    LaunchedEffect(viewModel.toastMessage) {
-        viewModel.toastMessage?.let {
+    // Observa Toast do STATE
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.clearToastMessage()
         }
@@ -88,13 +91,13 @@ fun TransactionsScreen(
                 Text("Transactions", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (viewModel.isLoading) {
+                if (state.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                } else if (viewModel.uiTransactions.isEmpty()) {
+                } else if (state.uiTransactions.isEmpty()) {
                     Text("No transactions found.", color = Color.Gray)
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(viewModel.uiTransactions) { transaction ->
+                        items(state.uiTransactions) { transaction ->
                             TransactionItem(transaction) { viewModel.deleteTransaction(transaction.id) }
                         }
                     }

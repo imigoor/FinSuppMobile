@@ -33,10 +33,13 @@ fun LoginScreen(loginViewModel: LoginViewModel = koinViewModel(), onLoginSuccess
     var isLoginTab by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
-    LaunchedEffect(loginViewModel.loginSuccess) {
-        if (loginViewModel.loginSuccess) {
-            onLoginSuccess(loginViewModel.userName)
-            loginViewModel.loginSuccess = false
+    val state = loginViewModel.uiState
+
+    // Observa o sucesso no STATE
+    LaunchedEffect(state.loginSuccess) {
+        if (state.loginSuccess) {
+            onLoginSuccess(state.userName)
+            loginViewModel.onLoginSuccessHandled()
         }
     }
 
@@ -81,14 +84,14 @@ fun LoginScreen(loginViewModel: LoginViewModel = koinViewModel(), onLoginSuccess
                     Text("Sign in to access your account", color = TextGray, fontSize = 14.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    CustomTextField("Email", loginViewModel.email, { loginViewModel.email = it }, Icons.Default.Email, "Digite seu e-mail")
+                    CustomTextField("Email", state.email, { loginViewModel.updateEmail(it) }, Icons.Default.Email, "Digite seu e-mail")
                     Spacer(modifier = Modifier.height(16.dp))
-                    CustomTextField("Password", loginViewModel.password, { loginViewModel.password = it }, Icons.Default.Lock, "Digite sua senha",true)
+                    CustomTextField("Password", state.password, { loginViewModel.updatePassword(it) }, Icons.Default.Lock, "Digite sua senha",true)
 
-                    ErrorMessage(loginViewModel.loginError)
+                    ErrorMessage(state.loginError)
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    ActionButton(text = "Sign In", isLoading = loginViewModel.isLoading) {
+                    ActionButton(text = "Sign In", isLoading = state.isLoading) {
                         loginViewModel.performLogin()
                     }
 
@@ -97,18 +100,18 @@ fun LoginScreen(loginViewModel: LoginViewModel = koinViewModel(), onLoginSuccess
                     Text("Sign up to get started with FinSupp", color = TextGray, fontSize = 14.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    CustomTextField("Full Name", loginViewModel.registerName, { loginViewModel.registerName = it }, Icons.Default.Person, "Digite seu nome completo")
+                    CustomTextField("Full Name", state.registerName, { loginViewModel.updateRegisterName(it) }, Icons.Default.Person, "Digite seu nome completo")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    CustomTextField("Email", loginViewModel.registerEmail, { loginViewModel.registerEmail = it }, Icons.Default.Email, "Digite seu e-mail")
+                    CustomTextField("Email", state.registerEmail, { loginViewModel.updateRegisterEmail(it) }, Icons.Default.Email, "Digite seu e-mail")
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    CustomTextField("Password", loginViewModel.registerPassword, { loginViewModel.registerPassword = it }, Icons.Default.Lock, "Digite sua senha", true)
+                    CustomTextField("Password", state.registerPassword, { loginViewModel.updateRegisterPassword(it) }, Icons.Default.Lock, "Digite sua senha", true)
 
-                    ErrorMessage(loginViewModel.loginError)
+                    ErrorMessage(state.loginError)
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    ActionButton(text = "Create Account", isLoading = loginViewModel.isLoading) {
+                    ActionButton(text = "Create Account", isLoading = state.isLoading) {
                         loginViewModel.performRegister()
                     }
                 }
@@ -117,6 +120,7 @@ fun LoginScreen(loginViewModel: LoginViewModel = koinViewModel(), onLoginSuccess
     }
 }
 
+// mantive as funções auxiliares exatamente iguais
 @Composable
 fun ErrorMessage(error: String?) {
     if (error != null) {

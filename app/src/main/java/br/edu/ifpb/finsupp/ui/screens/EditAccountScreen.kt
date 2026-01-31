@@ -38,6 +38,8 @@ fun EditAccountScreen(
 ) {
     val context = LocalContext.current
 
+    val state = viewModel.uiState
+
     // estados visuais locais (Dropdowns)
     var expandedBank by remember { mutableStateOf(false) }
     var expandedType by remember { mutableStateOf(false) }
@@ -55,17 +57,17 @@ fun EditAccountScreen(
         )
     }
 
-    // observa sucesso na atualização
-    LaunchedEffect(viewModel.updateSuccess) {
-        if (viewModel.updateSuccess) {
+    // observa sucesso na atualização (LENDO DO STATE)
+    LaunchedEffect(state.updateSuccess) {
+        if (state.updateSuccess) {
             onUpdateSuccess()
             viewModel.onNavigatedAway()
         }
     }
 
-    // observa mensagens (Toasts)
-    LaunchedEffect(viewModel.toastMessage) {
-        viewModel.toastMessage?.let {
+    // observa mensagens (Toasts) (LENDO DO STATE)
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearToastMessage()
         }
@@ -94,11 +96,11 @@ fun EditAccountScreen(
             Text("Update your account information", color = Color.Gray, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(24.dp))
 
-            // campos ligados ao ViewModel
+            // campos ligados ao ViewModel (STATE + UPDATE FUNCTIONS)
             DarkInput(
                 label = "Description",
-                value = viewModel.description,
-                onValueChange = { viewModel.description = it }
+                value = state.description,
+                onValueChange = { viewModel.updateDescription(it) }
             )
 
             // banco
@@ -106,7 +108,7 @@ fun EditAccountScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Box {
                 OutlinedTextField(
-                    value = viewModel.selectedBank?.name ?: "Carregando...",
+                    value = state.selectedBank?.name ?: "Carregando...",
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.White) },
@@ -125,11 +127,11 @@ fun EditAccountScreen(
                     onDismissRequest = { expandedBank = false },
                     modifier = Modifier.background(Color(0xFF1E293B)).heightIn(max = 250.dp)
                 ) {
-                    viewModel.bankList.forEach { bank ->
+                    state.bankList.forEach { bank ->
                         DropdownMenuItem(
                             text = { Text(bank.name, color = Color.White) },
                             onClick = {
-                                viewModel.selectedBank = bank
+                                viewModel.updateBank(bank)
                                 expandedBank = false
                             }
                         )
@@ -142,7 +144,7 @@ fun EditAccountScreen(
             Text("Account Type", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Box(modifier = Modifier.fillMaxWidth().clickable { expandedType = true }) {
                 OutlinedTextField(
-                    value = viewModel.selectedType,
+                    value = state.selectedType,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.White) },
@@ -163,7 +165,7 @@ fun EditAccountScreen(
                         DropdownMenuItem(
                             text = { Text(type, color = Color.White) },
                             onClick = {
-                                viewModel.selectedType = type
+                                viewModel.updateType(type)
                                 expandedType = false
                             }
                         )
@@ -175,17 +177,17 @@ fun EditAccountScreen(
             // saldo e datas
             DarkInput(
                 label = "Balance",
-                value = viewModel.balance,
-                onValueChange = { viewModel.balance = it },
+                value = state.balance,
+                onValueChange = { viewModel.updateBalance(it) },
                 isNumber = true
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.weight(1f)) {
-                    DarkInput("Closing Day", viewModel.closingDay, { viewModel.closingDay = it }, true)
+                    DarkInput("Closing Day", state.closingDay, { viewModel.updateClosingDay(it) }, true)
                 }
                 Box(Modifier.weight(1f)) {
-                    DarkInput("Payment Due Day", viewModel.dueDay, { viewModel.dueDay = it }, true)
+                    DarkInput("Payment Due Day", state.dueDay, { viewModel.updateDueDay(it) }, true)
                 }
             }
 
@@ -197,9 +199,9 @@ fun EditAccountScreen(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !viewModel.isLoading
+                enabled = !state.isLoading
             ) {
-                if (viewModel.isLoading) CircularProgressIndicator(color = Color.White)
+                if (state.isLoading) CircularProgressIndicator(color = Color.White)
                 else Text("Update", fontWeight = FontWeight.Bold)
             }
         }

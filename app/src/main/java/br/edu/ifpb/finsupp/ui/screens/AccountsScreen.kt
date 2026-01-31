@@ -41,14 +41,23 @@ fun AccountsScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val state = viewModel.uiState
+
     // carrega dados ao entrar ou trocar de usuário
     LaunchedEffect(userName) {
         viewModel.loadData()
     }
 
-    // observa mensagens de erro/sucesso para mostrar Toast
-    LaunchedEffect(viewModel.toastMessage) {
-        viewModel.toastMessage?.let { message ->
+    LaunchedEffect(viewModel.logoutSuccess) {
+        if (viewModel.logoutSuccess) {
+            onLogout() // Navega para fora
+            viewModel.onLogoutHandled() // Reseta o flag
+        }
+    }
+
+    // observa mensagens (Toast) direto do State
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             viewModel.clearToastMessage()
         }
@@ -71,8 +80,7 @@ fun AccountsScreen(
                     }
                 },
                 onLogout = {
-                    viewModel.resetState() // limpa o estado antes de sair
-                    onLogout()
+                    viewModel.performLogout()
                 }
             )
         }
@@ -119,7 +127,7 @@ fun AccountsScreen(
 
                 // campo de busca ligado ao ViewModel
                 OutlinedTextField(
-                    value = viewModel.searchQuery,
+                    value = state.searchQuery, // ler do state
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
                     placeholder = { Text("Search accounts...", color = Color.Gray) },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
@@ -136,14 +144,14 @@ fun AccountsScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // estado da lista (Loading, Vazio, Preenchido)
-                if (viewModel.isLoading) {
+                if (state.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = PrimaryBlue)
                     }
-                } else if (viewModel.uiAccounts.isEmpty()) {
+                } else if (state.accounts.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                         Text(
-                            if (viewModel.searchQuery.isNotEmpty()) "No results found."
+                            if (state.searchQuery.isNotEmpty()) "No results found."
                             else "No accounts found. Create your first\naccount to get started.",
                             color = TextGray,
                             textAlign = TextAlign.Center
@@ -153,8 +161,8 @@ fun AccountsScreen(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(items = viewModel.uiAccounts) { account ->
-                            val bankName = viewModel.banksMap[account.bank] ?: "Bank ${account.bank}"
+                        items(items = state.accounts) { account ->
+                            val bankName = state.banksMap[account.bank] ?: "Bank ${account.bank}"
 
                             AccountItemCard(
                                 account = account,

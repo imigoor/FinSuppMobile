@@ -4,7 +4,9 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -29,17 +31,21 @@ fun AddTransactionScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+
+    // PEGA O ESTADO ÚNICO
+    val state = viewModel.uiState
+
     LaunchedEffect(Unit) { viewModel.loadDependencies() }
 
-    LaunchedEffect(viewModel.saveSuccess) {
-        if (viewModel.saveSuccess) {
+    LaunchedEffect(state.saveSuccess) {
+        if (state.saveSuccess) {
             onBack()
             viewModel.onNavigatedAway()
         }
     }
 
-    LaunchedEffect(viewModel.toastMessage) {
-        viewModel.toastMessage?.let {
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearToastMessage()
         }
@@ -57,18 +63,24 @@ fun AddTransactionScreen(
         },
         containerColor = DarkBackground
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+        // ADICIONADO O SCROLL AQUI PARA NÃO CORTAR O BOTÃO
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
 
             // ABAS (Withdraw | Deposit | Transfer)
             TabRow(
-                selectedTabIndex = viewModel.selectedTab,
+                selectedTabIndex = state.selectedTab,
                 containerColor = DarkBackground,
                 contentColor = PrimaryBlue
             ) {
                 listOf("Withdraw", "Deposit", "Transfer").forEachIndexed { index, title ->
                     Tab(
-                        selected = viewModel.selectedTab == index,
-                        onClick = { viewModel.selectedTab = index },
+                        selected = state.selectedTab == index,
+                        onClick = { viewModel.updateTab(index) },
                         text = { Text(title) }
                     )
                 }
@@ -76,37 +88,37 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Campos Comuns
-            DarkInput("Description", viewModel.description, { viewModel.description = it })
-            DarkInput("Amount", viewModel.amount, { viewModel.amount = it }, isNumber = true)
-            DarkInput("Date (YYYY-MM-DD)", viewModel.date, { viewModel.date = it })
+            // Campos Comuns (LENDO DO STATE)
+            DarkInput("Description", state.description, { viewModel.updateDescription(it) })
+            DarkInput("Amount", state.amount, { viewModel.updateAmount(it) }, isNumber = true)
+            DarkInput("Date (YYYY-MM-DD)", state.date, { viewModel.updateDate(it) })
 
             // Dropdown Conta Origem (Sempre visível)
             DropdownSelector(
-                label = if (viewModel.selectedTab == 2) "From Account" else "Account",
-                selectedValue = viewModel.selectedAccount?.description ?: "Select Account",
-                items = viewModel.accountsList,
-                onItemSelected = { viewModel.selectedAccount = it },
+                label = if (state.selectedTab == 2) "From Account" else "Account",
+                selectedValue = state.selectedAccount?.description ?: "Select Account",
+                items = state.accountsList,
+                onItemSelected = { viewModel.updateSelectedAccount(it) },
                 itemLabel = { it.description }
             )
 
             // Campos específicos
-            if (viewModel.selectedTab == 2) { // TRANSFER
+            if (state.selectedTab == 2) { // TRANSFER
                 Spacer(modifier = Modifier.height(16.dp))
                 DropdownSelector(
                     label = "To Account",
-                    selectedValue = viewModel.selectedToAccount?.description ?: "Select Recipient",
-                    items = viewModel.accountsList.filter { it.id != viewModel.selectedAccount?.id }, // Não transferir para si mesmo
-                    onItemSelected = { viewModel.selectedToAccount = it },
+                    selectedValue = state.selectedToAccount?.description ?: "Select Recipient",
+                    items = state.accountsList.filter { it.id != state.selectedAccount?.id }, // Não transferir para si mesmo
+                    onItemSelected = { viewModel.updateSelectedToAccount(it) },
                     itemLabel = { it.description }
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             DropdownSelector(
                 label = "Category",
-                selectedValue = viewModel.selectedCategory?.description ?: "Select Category",
-                items = viewModel.categoriesList,
-                onItemSelected = { viewModel.selectedCategory = it },
+                selectedValue = state.selectedCategory?.description ?: "Select Category",
+                items = state.categoriesList,
+                onItemSelected = { viewModel.updateSelectedCategory(it) },
                 itemLabel = { it.description }
             )
 
@@ -115,15 +127,18 @@ fun AddTransactionScreen(
                 onClick = { viewModel.createTransaction() },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                enabled = !viewModel.isLoading
+                enabled = !state.isLoading
             ) {
-                if (viewModel.isLoading) CircularProgressIndicator(color = Color.White) else Text("Create")
+                if (state.isLoading) CircularProgressIndicator(color = Color.White) else Text("Create")
             }
+
+            // Espaço extra no final para garantir scroll confortável
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
-// Componente auxiliar para dropdown
+// Componente auxiliar para dropdown (mantido igual)
 @Composable
 fun <T> DropdownSelector(label: String, selectedValue: String, items: List<T>, onItemSelected: (T) -> Unit, itemLabel: (T) -> String) {
     var expanded by remember { mutableStateOf(false) }

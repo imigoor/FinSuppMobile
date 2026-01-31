@@ -33,7 +33,9 @@ fun AddAccountScreen(
 ) {
     val context = LocalContext.current
 
-    // estados visuais locais
+    val state = viewModel.uiState
+
+    // estados visuais locais, apenas controle de UI, não de dados
     var expandedType by remember { mutableStateOf(false) }
     var expandedBank by remember { mutableStateOf(false) }
 
@@ -42,17 +44,17 @@ fun AddAccountScreen(
         viewModel.loadBanks()
     }
 
-    // observa sucesso para navegar de volta
-    LaunchedEffect(viewModel.saveSuccess) {
-        if (viewModel.saveSuccess) {
+    // observa sucesso no STATE
+    LaunchedEffect(state.saveSuccess) {
+        if (state.saveSuccess) {
             onSaveSuccess()
             viewModel.onNavigatedAway()
         }
     }
 
-    // observa mensagens de erro/sucesso (Toast)
-    LaunchedEffect(viewModel.toastMessage) {
-        viewModel.toastMessage?.let {
+    // observa mensagens no STATE
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearToastMessage()
         }
@@ -81,11 +83,11 @@ fun AddAccountScreen(
             Text("Add a new bank account to track your finances", color = Color.Gray, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(24.dp))
 
-            // campos ligados ao ViewModel
+            // ler do state atualiza pelo viewmodel
             DarkInput(
                 label = "Description",
-                value = viewModel.description,
-                onValueChange = { viewModel.description = it }
+                value = state.description, // state
+                onValueChange = { viewModel.updateDescription(it) } // function
             )
 
             // selecao de banco
@@ -93,12 +95,12 @@ fun AddAccountScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Box {
                 OutlinedTextField(
-                    value = if (viewModel.isLoadingBanks) "Carregando bancos..." else (viewModel.selectedBank?.name ?: "Selecione um banco"),
+                    value = if (state.isLoadingBanks) "Carregando bancos..." else (state.selectedBank?.name ?: "Selecione um banco"),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.White) },
                     modifier = Modifier.fillMaxWidth().clickable {
-                        if (!viewModel.isLoadingBanks) expandedBank = true
+                        if (!state.isLoadingBanks) expandedBank = true
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFF1E293B), unfocusedContainerColor = Color(0xFF1E293B),
@@ -108,18 +110,18 @@ fun AddAccountScreen(
                     shape = RoundedCornerShape(8.dp),
                     enabled = false
                 )
-                Box(modifier = Modifier.matchParentSize().clickable { if (!viewModel.isLoadingBanks) expandedBank = true })
+                Box(modifier = Modifier.matchParentSize().clickable { if (!state.isLoadingBanks) expandedBank = true })
 
                 DropdownMenu(
                     expanded = expandedBank,
                     onDismissRequest = { expandedBank = false },
                     modifier = Modifier.background(Color(0xFF1E293B)).heightIn(max = 250.dp)
                 ) {
-                    viewModel.bankList.forEach { bank ->
+                    state.bankList.forEach { bank ->
                         DropdownMenuItem(
                             text = { Text(bank.name, color = Color.White) },
                             onClick = {
-                                viewModel.selectedBank = bank // Atualiza no VM
+                                viewModel.updateBank(bank) // <--- FUNCTION
                                 expandedBank = false
                             }
                         )
@@ -133,7 +135,7 @@ fun AddAccountScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Box {
                 OutlinedTextField(
-                    value = viewModel.selectedType,
+                    value = state.selectedType,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.White) },
@@ -147,9 +149,9 @@ fun AddAccountScreen(
                 )
                 Box(modifier = Modifier.matchParentSize().clickable { expandedType = true })
                 DropdownMenu(expanded = expandedType, onDismissRequest = { expandedType = false }, modifier = Modifier.background(Color(0xFF1E293B))) {
-                    DropdownMenuItem(text = { Text("CHECKING") }, onClick = { viewModel.selectedType = "CHECKING"; expandedType = false })
-                    DropdownMenuItem(text = { Text("SAVINGS") }, onClick = { viewModel.selectedType = "SAVINGS"; expandedType = false })
-                    DropdownMenuItem(text = { Text("INVESTMENT") }, onClick = { viewModel.selectedType = "INVESTMENT"; expandedType = false })
+                    DropdownMenuItem(text = { Text("CHECKING") }, onClick = { viewModel.updateType("CHECKING"); expandedType = false })
+                    DropdownMenuItem(text = { Text("SAVINGS") }, onClick = { viewModel.updateType("SAVINGS"); expandedType = false })
+                    DropdownMenuItem(text = { Text("INVESTMENT") }, onClick = { viewModel.updateType("INVESTMENT"); expandedType = false })
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -157,8 +159,8 @@ fun AddAccountScreen(
             // saldo e data
             DarkInput(
                 label = "Initial Balance",
-                value = viewModel.balance,
-                onValueChange = { viewModel.balance = it },
+                value = state.balance,
+                onValueChange = { viewModel.updateBalance(it) },
                 isNumber = true
             )
 
@@ -166,16 +168,16 @@ fun AddAccountScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     DarkInput(
                         label = "Closing Day",
-                        value = viewModel.closingDay,
-                        onValueChange = { viewModel.closingDay = it },
+                        value = state.closingDay,
+                        onValueChange = { viewModel.updateClosingDay(it) },
                         isNumber = true
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     DarkInput(
                         label = "Payment Due Day",
-                        value = viewModel.dueDay,
-                        onValueChange = { viewModel.dueDay = it },
+                        value = state.dueDay,
+                        onValueChange = { viewModel.updateDueDay(it) },
                         isNumber = true
                     )
                 }
@@ -189,9 +191,9 @@ fun AddAccountScreen(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(8.dp),
-                enabled = !viewModel.isLoading
+                enabled = !state.isLoading
             ) {
-                if (viewModel.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                if (state.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 else Text("Create", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }

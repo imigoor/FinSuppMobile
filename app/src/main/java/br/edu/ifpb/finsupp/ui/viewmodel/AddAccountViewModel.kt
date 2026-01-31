@@ -8,83 +8,77 @@ import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
 import br.edu.ifpb.finsupp.network.service.AccountApi
 import br.edu.ifpb.finsupp.network.service.BankApi
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.AddAccountUiState
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 class AddAccountViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
 
-    // estado do formulario
-    var description by mutableStateOf("")
-    var balance by mutableStateOf("")
-    var closingDay by mutableStateOf("")
-    var dueDay by mutableStateOf("")
-
-    // dropdowns
-    var selectedType by mutableStateOf("CHECKING")
-    var selectedBank by mutableStateOf<Bank?>(null)
-
-    // dados para popular a lista
-    var bankList by mutableStateOf<List<Bank>>(emptyList())
+    var uiState by mutableStateOf(AddAccountUiState())
         private set
 
-    // estados de controle
-    var isLoading by mutableStateOf(false)
-        private set
-
-    var isLoadingBanks by mutableStateOf(true)
-        private set
-
-    // eventos (Mensagens e Navegação)
-    var toastMessage by mutableStateOf<String?>(null)
-        private set
-
-    var saveSuccess by mutableStateOf(false)
-        private set
+    // funcoes pra UI atualizar os campos, input
+    fun updateDescription(value: String) { uiState = uiState.copy(description = value) }
+    fun updateBalance(value: String) { uiState = uiState.copy(balance = value) }
+    fun updateClosingDay(value: String) { uiState = uiState.copy(closingDay = value) }
+    fun updateDueDay(value: String) { uiState = uiState.copy(dueDay = value) }
+    fun updateType(value: String) { uiState = uiState.copy(selectedType = value) }
+    fun updateBank(bank: Bank) { uiState = uiState.copy(selectedBank = bank) }
 
     // carrega os bancos ao iniciar (chamado pela Screen)
     fun loadBanks() {
         viewModelScope.launch {
-            isLoadingBanks = true
+            uiState = uiState.copy(isLoadingBanks = true)
             try {
                 //val response = RetrofitClient.bankApi.getBanks()
                 val response = bankApi.getBanks()
                 if (response.isSuccessful) {
-                    bankList = response.body()?.dataList ?: emptyList()
+                    uiState = uiState.copy(
+                        bankList = response.body()?.dataList ?: emptyList(),
+                        isLoadingBanks = false
+                    )
                 } else {
-                    toastMessage = "Erro ao carregar bancos"
+                    uiState = uiState.copy(
+                        toastMessage = "Erro ao carregar bancos",
+                        isLoadingBanks = false
+                    )
                 }
             } catch (e: Exception) {
-                toastMessage = "Sem conexão com a API"
-            } finally {
-                isLoadingBanks = false
+                uiState = uiState.copy(
+                    toastMessage = "Sem conexão com a API",
+                    isLoadingBanks = false
+                )
             }
         }
     }
 
     fun createAccount() {
-        if (selectedBank == null) {
-            toastMessage = "Selecione um banco!"
+        if (uiState.selectedBank == null) {
+            uiState = uiState.copy(toastMessage = "Selecione um banco!")
             return
         }
 
         viewModelScope.launch {
-            isLoading = true
+            uiState = uiState.copy(isLoading = true)
             try {
                 val request = CreateAccountRequest(
-                    description = description,
-                    accountType = selectedType,
-                    bank = selectedBank!!.id,
-                    balance = balance.toDoubleOrNull() ?: 0.0,
-                    closingDay = closingDay.toIntOrNull() ?: 1,
-                    paymentDueDay = dueDay.toIntOrNull() ?: 10
+                    description = uiState.description,
+                    accountType = uiState.selectedType,
+                    bank = uiState.selectedBank!!.id,
+                    balance = uiState.balance.toDoubleOrNull() ?: 0.0,
+                    closingDay = uiState.closingDay.toIntOrNull() ?: 1,
+                    paymentDueDay = uiState.dueDay.toIntOrNull() ?: 10
                 )
 
                 //val response = RetrofitClient.accountApi.createAccount(request)
                 val response = accountApi.createAccount(request)
 
                 if (response.isSuccessful) {
-                    toastMessage = "Conta Criada com Sucesso!"
-                    saveSuccess = true // Gatilho para navegar
+                    uiState = uiState.copy(
+                        toastMessage = "Conta Criada com Sucesso!",
+                        saveSuccess = true,
+                        isLoading = false
+                    )
                 } else {
                     // lógica de tratamento do erro 422 (JSON)
                     val rawError = response.errorBody()?.string()
@@ -111,22 +105,26 @@ class AddAccountViewModel(private val accountApi: AccountApi, private val bankAp
                     } catch (e: Exception) {
                         rawError ?: "Erro desconhecido"
                     }
-                    toastMessage = finalMessage
+                    uiState = uiState.copy(
+                        toastMessage = finalMessage,
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro: ${e.message}"
-            } finally {
-                isLoading = false
+                uiState = uiState.copy(
+                    toastMessage = "Erro: ${e.message}",
+                    isLoading = false
+                )
             }
         }
     }
 
     // limpezas de eventos
     fun clearToastMessage() {
-        toastMessage = null
+        uiState = uiState.copy(toastMessage = null)
     }
 
     fun onNavigatedAway() {
-        saveSuccess = false
+        uiState = uiState.copy(saveSuccess = false)
     }
 }

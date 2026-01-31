@@ -9,6 +9,7 @@ import br.edu.ifpb.finsupp.network.model.*
 import br.edu.ifpb.finsupp.network.service.AccountApi
 import br.edu.ifpb.finsupp.network.service.CategoryApi
 import br.edu.ifpb.finsupp.network.service.TransactionApi
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.AddTransactionUiState
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -20,56 +21,50 @@ class AddTransactionViewModel(
     private val categoryApi: CategoryApi
 ) : ViewModel() {
 
-    // Abas: 0 = Withdraw, 1 = Deposit, 2 = Transfer
-    var selectedTab by mutableStateOf(0)
+    var uiState by mutableStateOf(AddTransactionUiState())
+        private set
 
-    // Campos do formulário
-    var description by mutableStateOf("")
-    var amount by mutableStateOf("")
-    var date by mutableStateOf(
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-    )
+    // funcoes pra UI atualizar os campos
+    fun updateTab(index: Int) { uiState = uiState.copy(selectedTab = index) }
+    fun updateDescription(v: String) { uiState = uiState.copy(description = v) }
+    fun updateAmount(v: String) { uiState = uiState.copy(amount = v) }
+    fun updateDate(v: String) { uiState = uiState.copy(date = v) }
 
-    // Seleções
-    var selectedAccount by mutableStateOf<AccountApiData?>(null) // Conta Origem
-    var selectedToAccount by mutableStateOf<AccountApiData?>(null) // Conta Destino (Transfer)
-    var selectedCategory by mutableStateOf<Category?>(null)
-
-    // Listas para Dropdowns
-    var accountsList by mutableStateOf<List<AccountApiData>>(emptyList())
-    var categoriesList by mutableStateOf<List<Category>>(emptyList())
-
-    var isLoading by mutableStateOf(false)
-    var saveSuccess by mutableStateOf(false)
-    var toastMessage by mutableStateOf<String?>(null)
+    fun updateSelectedAccount(acc: AccountApiData) { uiState = uiState.copy(selectedAccount = acc) }
+    fun updateSelectedToAccount(acc: AccountApiData) { uiState = uiState.copy(selectedToAccount = acc) }
+    fun updateSelectedCategory(cat: Category) { uiState = uiState.copy(selectedCategory = cat) }
 
     fun loadDependencies() {
         viewModelScope.launch {
             try {
                 // Carrega Contas
-                //val accRes = RetrofitClient.accountApi.getAccounts()
                 val accRes = accountApi.getAccounts()
-                if (accRes.isSuccessful) accountsList = accRes.body()?.dataList ?: emptyList()
+                val accounts = if (accRes.isSuccessful) accRes.body()?.dataList ?: emptyList() else emptyList()
 
                 // Carrega Categorias
-                //val catRes = RetrofitClient.categoryApi.getCategories()
                 val catRes = categoryApi.getCategories()
-                if (catRes.isSuccessful) categoriesList = catRes.body()?.dataList ?: emptyList()
+                val categories = if (catRes.isSuccessful) catRes.body()?.dataList ?: emptyList() else emptyList()
+
+                // Atualiza o estado de uma vez
+                uiState = uiState.copy(
+                    accountsList = accounts,
+                    categoriesList = categories
+                )
 
             } catch (e: Exception) {
-                toastMessage = "Erro ao carregar dados iniciais"
+                uiState = uiState.copy(toastMessage = "Erro ao carregar dados iniciais")
             }
         }
     }
 
     fun createTransaction() {
-        if (selectedAccount == null || amount.isBlank() || description.isBlank()) {
-            toastMessage = "Preencha os campos obrigatórios"
+        if (uiState.selectedAccount == null || uiState.amount.isBlank() || uiState.description.isBlank()) {
+            uiState = uiState.copy(toastMessage = "Preencha os campos obrigatórios")
             return
         }
 
         // Define o tipo baseado na aba
-        val typeStr = when(selectedTab) {
+        val typeStr = when(uiState.selectedTab) {
             0 -> "WITHDRAW"
             1 -> "DEPOSIT"
             2 -> "TRANSFER"
@@ -77,40 +72,51 @@ class AddTransactionViewModel(
         }
 
         // Validação específica de Transferência
-        if (typeStr == "TRANSFER" && selectedToAccount == null) {
-            toastMessage = "Selecione a conta de destino"
+        if (typeStr == "TRANSFER" && uiState.selectedToAccount == null) {
+            uiState = uiState.copy(toastMessage = "Selecione a conta de destino")
             return
         }
 
         viewModelScope.launch {
-            isLoading = true
+            uiState = uiState.copy(isLoading = true)
             try {
                 val request = CreateTransactionRequest(
-                    description = description,
-                    amount = amount.toDoubleOrNull() ?: 0.0,
-                    transactionDate = date,
+                    description = uiState.description,
+                    amount = uiState.amount.toDoubleOrNull() ?: 0.0,
+                    transactionDate = uiState.date,
                     type = typeStr,
-                    accountId = selectedAccount!!.id,
-                    recipientAccountId = if (typeStr == "TRANSFER") selectedToAccount!!.id else null,
-                    category = selectedCategory?.id
+                    accountId = uiState.selectedAccount!!.id,
+                    recipientAccountId = if (typeStr == "TRANSFER") uiState.selectedToAccount!!.id else null,
+                    category = uiState.selectedCategory?.id
                 )
 
-                //val response = RetrofitClient.transactionApi.createTransaction(request)
                 val response = transactionApi.createTransaction(request)
                 if (response.isSuccessful) {
-                    toastMessage = "Transação criada!"
-                    saveSuccess = true
+                    uiState = uiState.copy(
+                        toastMessage = "Transação criada!",
+                        saveSuccess = true,
+                        isLoading = false
+                    )
                 } else {
-                    toastMessage = "Erro: ${response.code()}"
+                    uiState = uiState.copy(
+                        toastMessage = "Erro: ${response.code()}",
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro: ${e.message}"
-            } finally {
-                isLoading = false
+                uiState = uiState.copy(
+                    toastMessage = "Erro: ${e.message}",
+                    isLoading = false
+                )
             }
         }
     }
 
-    fun clearToastMessage() { toastMessage = null }
-    fun onNavigatedAway() { saveSuccess = false }
+    fun clearToastMessage() {
+        uiState = uiState.copy(toastMessage = null)
+    }
+
+    fun onNavigatedAway() {
+        uiState = uiState.copy(saveSuccess = false)
+    }
 }

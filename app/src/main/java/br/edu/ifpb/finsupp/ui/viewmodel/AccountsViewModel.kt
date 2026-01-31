@@ -8,107 +8,114 @@ import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
 import br.edu.ifpb.finsupp.network.service.AccountApi
 import br.edu.ifpb.finsupp.network.service.BankApi
+import br.edu.ifpb.finsupp.repository.AccountRepository
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.AccountsUiState
 import kotlinx.coroutines.launch
 
-class AccountsViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
+class AccountsViewModel(
+    private val repository: AccountRepository,
+    private val bankApi: BankApi
+) : ViewModel() {
 
-    private var _allAccounts = listOf<AccountApiData>()
+    private var _allAccountsCache = listOf<AccountApiData>()
 
-    // estados visíveis para a UI
-    var uiAccounts by mutableStateOf<List<AccountApiData>>(emptyList())
+    var logoutSuccess by mutableStateOf(false)
         private set
 
-    var banksMap by mutableStateOf<Map<Int, String>>(emptyMap())
+    // o estado unico da tela padrao ui state
+    var uiState by mutableStateOf(AccountsUiState())
         private set
 
-    var isLoading by mutableStateOf(false)
-        private set
-
-    var searchQuery by mutableStateOf("")
-        private set
-
-    var toastMessage by mutableStateOf<String?>(null)
-        private set
-
-    // Carrega dados iniciais
     fun loadData() {
         viewModelScope.launch {
-            isLoading = true
+            // Atualiza estado para loading
+            uiState = uiState.copy(isLoading = true)
+
             try {
-                // 1. Carrega lista de bancos para mapear ID -> Nome
-                //val banksResponse = RetrofitClient.bankApi.getBanks()
-                val banksResponse = bankApi.getBanks()
-                if (banksResponse.isSuccessful) {
-                    banksMap = banksResponse.body()?.dataList?.associate { it.id to it.name } ?: emptyMap()
+                val currentBanks = try {
+                    val res = bankApi.getBanks()
+                    if (res.isSuccessful) {
+                        res.body()?.dataList?.associate { it.id to it.name } ?: emptyMap()
+                    } else uiState.banksMap
+                } catch (e: Exception) {
+                    uiState.banksMap
                 }
 
-                // 2. Carrega as contas do usuário
-                //val accountsResponse = RetrofitClient.accountApi.getAccounts()
-                val accountsResponse = accountApi.getAccounts()
-                if (accountsResponse.isSuccessful) {
-                    _allAccounts = accountsResponse.body()?.dataList ?: emptyList()
-                    applySearchFilter() // Atualiza a lista visual
-                } else {
-                    toastMessage = "Erro ao carregar contas: ${accountsResponse.code()}"
-                }
+                // room
+                _allAccountsCache = repository.getAccounts()
+
+                uiState = uiState.copy(
+                    isLoading = false,
+                    banksMap = currentBanks,
+                    accounts = filterList(uiState.searchQuery, _allAccountsCache),
+                    toastMessage = if (_allAccountsCache.isEmpty()) "Nenhuma conta encontrada." else null
+                )
+
             } catch (e: Exception) {
-                toastMessage = "Erro de conexão"
-            } finally {
-                isLoading = false
+                uiState = uiState.copy(
+                    isLoading = false,
+                    toastMessage = "Erro ao carregar dados: ${e.message}"
+                )
             }
         }
     }
 
-    // Atualiza a busca e filtra a lista
     fun onSearchQueryChanged(query: String) {
-        searchQuery = query
-        applySearchFilter()
+        // Atualiza a query E a lista filtrada ao mesmo tempo
+        uiState = uiState.copy(
+            searchQuery = query,
+            accounts = filterList(query, _allAccountsCache)
+        )
     }
 
-    private fun applySearchFilter() {
-        uiAccounts = if (searchQuery.isBlank()) {
-            _allAccounts
-        } else {
-            _allAccounts.filter {
-                it.description.contains(searchQuery, ignoreCase = true)
-            }
-        }
+    private fun filterList(query: String, list: List<AccountApiData>): List<AccountApiData> {
+        return if (query.isBlank()) list
+        else list.filter { it.description.contains(query, ignoreCase = true) }
     }
 
-    // Deleta uma conta
     fun deleteAccount(account: AccountApiData) {
         viewModelScope.launch {
             try {
-                //val response = RetrofitClient.accountApi.deleteAccount(account.id)
-                val response = accountApi.deleteAccount(account.id)
-                if (response.isSuccessful) {
-                    toastMessage = "Conta deletada!"
-                    // Remove localmente para não precisar recarregar tudo da API
-                    _allAccounts = _allAccounts.filter { it.id != account.id }
-                    applySearchFilter()
+                val success = repository.deleteAccount(account.id)
+                if (success) {
+                    _allAccountsCache = _allAccountsCache.filter { it.id != account.id }
+
+                    uiState = uiState.copy(
+                        accounts = filterList(uiState.searchQuery, _allAccountsCache),
+                        toastMessage = "Conta deletada!"
+                    )
                 } else {
-                    toastMessage = if (response.code() == 409) {
-                        "Não é possível deletar conta com movimentações."
-                    } else {
-                        "Erro ao deletar: ${response.code()}"
-                    }
+                    uiState = uiState.copy(toastMessage = "Não é possível deletar conta com movimentações.")
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro de conexão ao deletar"
+                uiState = uiState.copy(toastMessage = "Erro de conexão ao deletar")
             }
         }
     }
 
-    // Limpa a mensagem de Toast após exibida
     fun clearToastMessage() {
-        toastMessage = null
+        uiState = uiState.copy(toastMessage = null)
     }
 
-    // Reseta o estado (útil no Logout)
-    fun resetState() {
-        _allAccounts = emptyList()
-        uiAccounts = emptyList()
-        searchQuery = ""
-        banksMap = emptyMap()
+    fun performLogout() {
+        viewModelScope.launch {
+            uiState = uiState.copy(isLoading = true) // Mostra loading enquanto limpa
+            try {
+                repository.clearLocalData() // ESPERA limpar o banco
+            } catch (e: Exception) {
+                // Mesmo se der erro no banco, força a saída
+            }
+
+            // Limpa memória RAM
+            _allAccountsCache = emptyList()
+            uiState = AccountsUiState()
+
+            // Avisa a tela que acabou
+            logoutSuccess = true
+        }
+    }
+
+    fun onLogoutHandled() {
+        logoutSuccess = false
     }
 }

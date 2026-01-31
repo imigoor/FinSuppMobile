@@ -8,42 +8,30 @@ import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
 import br.edu.ifpb.finsupp.network.service.AccountApi
 import br.edu.ifpb.finsupp.network.service.BankApi
+import br.edu.ifpb.finsupp.ui.viewmodel.uiState.EditAccountUiState
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-class EditAccountViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
+class EditAccountViewModel(
+    private val accountApi: AccountApi,
+    private val bankApi: BankApi
+) : ViewModel() {
 
-    // estados do formulario
-    var description by mutableStateOf("")
-    var balance by mutableStateOf("")
-    var closingDay by mutableStateOf("")
-    var dueDay by mutableStateOf("")
-    var selectedType by mutableStateOf("CHECKING")
-
-    var selectedBank by mutableStateOf<Bank?>(null)
-    var bankList by mutableStateOf<List<Bank>>(emptyList())
+    var uiState by mutableStateOf(EditAccountUiState())
         private set
 
-    // estados de controle
-    var isLoading by mutableStateOf(false)
-        private set
-
-    var isLoadingBanks by mutableStateOf(true)
-        private set
-
-    // eventos
-    var toastMessage by mutableStateOf<String?>(null)
-        private set
-
-    var updateSuccess by mutableStateOf(false)
-        private set
-
-    // ID da conta sendo editada
+    // ID da conta sendo editada e ID do banco inicial (UI não exibe)
     private var currentAccountId: Int = 0
     private var initialBankId: Int = 0
 
-    // inicialização
-    // chamado pela Screen ao abrir para preencher os dados
+    // funções para a UI atualizar os inputs
+    fun updateDescription(v: String) { uiState = uiState.copy(description = v) }
+    fun updateBalance(v: String) { uiState = uiState.copy(balance = v) }
+    fun updateClosingDay(v: String) { uiState = uiState.copy(closingDay = v) }
+    fun updateDueDay(v: String) { uiState = uiState.copy(dueDay = v) }
+    fun updateType(v: String) { uiState = uiState.copy(selectedType = v) }
+    fun updateBank(bank: Bank) { uiState = uiState.copy(selectedBank = bank) }
+
     fun initialize(
         id: Int,
         initDesc: String,
@@ -54,34 +42,45 @@ class EditAccountViewModel(private val accountApi: AccountApi, private val bankA
         initDue: Int
     ) {
         currentAccountId = id
-        description = initDesc
         initialBankId = initBankId
-        selectedType = initType
-        balance = initBalance.toString()
-        closingDay = initClosing.toString()
-        dueDay = initDue.toString()
 
-        loadBanks() // carrega bancos e seleciona o correto
+        // Atualiza o estado inicial
+        uiState = uiState.copy(
+            description = initDesc,
+            selectedType = initType,
+            balance = initBalance.toString(),
+            closingDay = initClosing.toString(),
+            dueDay = initDue.toString()
+        )
+
+        loadBanks()
     }
 
     private fun loadBanks() {
         viewModelScope.launch {
-            isLoadingBanks = true
+            uiState = uiState.copy(isLoadingBanks = true)
             try {
-                //val response = RetrofitClient.bankApi.getBanks()
                 val response = bankApi.getBanks()
                 if (response.isSuccessful) {
                     val banks = response.body()?.dataList ?: emptyList()
-                    bankList = banks
-                    // tenta encontrar o banco original na lista carregada
-                    selectedBank = banks.find { it.id == initialBankId }
+
+                    uiState = uiState.copy(
+                        bankList = banks,
+                        // tenta encontrar o banco original na lista carregada
+                        selectedBank = banks.find { it.id == initialBankId },
+                        isLoadingBanks = false
+                    )
                 } else {
-                    toastMessage = "Erro ao carregar bancos"
+                    uiState = uiState.copy(
+                        toastMessage = "Erro ao carregar bancos",
+                        isLoadingBanks = false
+                    )
                 }
             } catch (e: Exception) {
-                toastMessage = "Sem conexão com a API"
-            } finally {
-                isLoadingBanks = false
+                uiState = uiState.copy(
+                    toastMessage = "Sem conexão com a API",
+                    isLoadingBanks = false
+                )
             }
         }
     }
@@ -89,25 +88,28 @@ class EditAccountViewModel(private val accountApi: AccountApi, private val bankA
     // ação de atualizar
     fun updateAccount() {
         viewModelScope.launch {
-            isLoading = true
+            uiState = uiState.copy(isLoading = true)
             try {
                 // monta o objeto de requisição
                 val request = CreateAccountRequest(
-                    description = description,
-                    accountType = selectedType,
-                    bank = selectedBank?.id ?: initialBankId,
-                    balance = balance.toDoubleOrNull() ?: 0.0,
-                    closingDay = closingDay.toIntOrNull() ?: 1,
-                    paymentDueDay = dueDay.toIntOrNull() ?: 10
+                    description = uiState.description,
+                    accountType = uiState.selectedType,
+                    bank = uiState.selectedBank?.id ?: initialBankId,
+                    balance = uiState.balance.toDoubleOrNull() ?: 0.0,
+                    closingDay = uiState.closingDay.toIntOrNull() ?: 1,
+                    paymentDueDay = uiState.dueDay.toIntOrNull() ?: 10
                 )
+
                 val response = accountApi.updateAccount(currentAccountId, request)
-                //val response = RetrofitClient.accountApi.updateAccount(currentAccountId, request)
 
                 if (response.isSuccessful) {
-                    toastMessage = "Conta Atualizada!"
-                    updateSuccess = true
+                    uiState = uiState.copy(
+                        toastMessage = "Conta Atualizada!",
+                        updateSuccess = true,
+                        isLoading = false
+                    )
                 } else {
-                    // tratamento de erro JSON (422)
+                    // tratamento de erro JSON (422) - LÓGICA MANTIDA INTACTA
                     val rawError = response.errorBody()?.string()
                     val finalMessage = try {
                         val jsonObject = JSONObject(rawError ?: "")
@@ -132,21 +134,26 @@ class EditAccountViewModel(private val accountApi: AccountApi, private val bankA
                     } catch (e: Exception) {
                         rawError ?: "Erro desconhecido"
                     }
-                    toastMessage = finalMessage
+
+                    uiState = uiState.copy(
+                        toastMessage = finalMessage,
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
-                toastMessage = "Erro: ${e.message}"
-            } finally {
-                isLoading = false
+                uiState = uiState.copy(
+                    toastMessage = "Erro: ${e.message}",
+                    isLoading = false
+                )
             }
         }
     }
 
     fun clearToastMessage() {
-        toastMessage = null
+        uiState = uiState.copy(toastMessage = null)
     }
 
     fun onNavigatedAway() {
-        updateSuccess = false
+        uiState = uiState.copy(updateSuccess = false)
     }
 }
