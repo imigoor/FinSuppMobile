@@ -5,14 +5,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.edu.ifpb.finsupp.network.RetrofitClient
 import br.edu.ifpb.finsupp.network.model.*
+import br.edu.ifpb.finsupp.network.service.AccountApi
+import br.edu.ifpb.finsupp.network.service.CategoryApi
+import br.edu.ifpb.finsupp.network.service.TransactionApi
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AddTransactionViewModel : ViewModel() {
+class AddTransactionViewModel(
+    private val transactionApi: TransactionApi,
+    private val accountApi: AccountApi,
+    private val categoryApi: CategoryApi
+) : ViewModel() {
 
     // Abas: 0 = Withdraw, 1 = Deposit, 2 = Transfer
     var selectedTab by mutableStateOf(0)
@@ -41,11 +47,13 @@ class AddTransactionViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Carrega Contas
-                val accRes = RetrofitClient.accountApi.getAccounts()
+                //val accRes = RetrofitClient.accountApi.getAccounts()
+                val accRes = accountApi.getAccounts()
                 if (accRes.isSuccessful) accountsList = accRes.body()?.dataList ?: emptyList()
 
                 // Carrega Categorias
-                val catRes = RetrofitClient.categoryApi.getCategories()
+                //val catRes = RetrofitClient.categoryApi.getCategories()
+                val catRes = categoryApi.getCategories()
                 if (catRes.isSuccessful) categoriesList = catRes.body()?.dataList ?: emptyList()
 
             } catch (e: Exception) {
@@ -87,7 +95,8 @@ class AddTransactionViewModel : ViewModel() {
                     category = selectedCategory?.id
                 )
 
-                val response = RetrofitClient.transactionApi.createTransaction(request)
+                //val response = RetrofitClient.transactionApi.createTransaction(request)
+                val response = transactionApi.createTransaction(request)
                 if (response.isSuccessful) {
                     toastMessage = "Transação criada!"
                     saveSuccess = true

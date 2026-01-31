@@ -5,12 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.edu.ifpb.finsupp.network.RetrofitClient
 import br.edu.ifpb.finsupp.network.model.*
+import br.edu.ifpb.finsupp.network.service.AccountApi
+import br.edu.ifpb.finsupp.network.service.BankApi
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-class EditAccountViewModel : ViewModel() {
+class EditAccountViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
 
     // estados do formulario
     var description by mutableStateOf("")
@@ -67,7 +68,8 @@ class EditAccountViewModel : ViewModel() {
         viewModelScope.launch {
             isLoadingBanks = true
             try {
-                val response = RetrofitClient.bankApi.getBanks()
+                //val response = RetrofitClient.bankApi.getBanks()
+                val response = bankApi.getBanks()
                 if (response.isSuccessful) {
                     val banks = response.body()?.dataList ?: emptyList()
                     bankList = banks
@@ -98,8 +100,8 @@ class EditAccountViewModel : ViewModel() {
                     closingDay = closingDay.toIntOrNull() ?: 1,
                     paymentDueDay = dueDay.toIntOrNull() ?: 10
                 )
-
-                val response = RetrofitClient.accountApi.updateAccount(currentAccountId, request)
+                val response = accountApi.updateAccount(currentAccountId, request)
+                //val response = RetrofitClient.accountApi.updateAccount(currentAccountId, request)
 
                 if (response.isSuccessful) {
                     toastMessage = "Conta Atualizada!"

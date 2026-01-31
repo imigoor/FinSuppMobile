@@ -20,11 +20,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import br.edu.ifpb.finsupp.ui.theme.DarkBackground
 import br.edu.ifpb.finsupp.ui.theme.PrimaryBlue
 import br.edu.ifpb.finsupp.ui.viewmodel.AddTransactionViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionScreen(
-    viewModel: AddTransactionViewModel = viewModel(),
+    viewModel: AddTransactionViewModel = koinViewModel(),
     onBack: () -> Unit
 ) {
     val context = LocalContext.current

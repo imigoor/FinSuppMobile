@@ -22,12 +22,13 @@ import br.edu.ifpb.finsupp.ui.theme.DarkBackground
 import br.edu.ifpb.finsupp.ui.theme.PrimaryBlue
 import br.edu.ifpb.finsupp.ui.viewmodel.TransactionsViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
     userName: String,
-    viewModel: TransactionsViewModel = viewModel(),
+    viewModel: TransactionsViewModel = koinViewModel(),
     onNavigateToHome: () -> Unit,
     onNavigateToAdd: () -> Unit,
     onLogout: () -> Unit,

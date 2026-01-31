@@ -6,19 +6,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
-import br.edu.ifpb.finsupp.network.RetrofitClient
 import br.edu.ifpb.finsupp.network.TokenManager
+import br.edu.ifpb.finsupp.network.service.AuthApi
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(private val api: AuthApi) : ViewModel() {
     var email by mutableStateOf("")
     var password by mutableStateOf("")
-
     var registerName by mutableStateOf("")
     var registerEmail by mutableStateOf("")
     var registerPassword by mutableStateOf("")
-
     var isLoading by mutableStateOf(false)
     var loginError by mutableStateOf<String?>(null)
     var loginSuccess by mutableStateOf(false)
@@ -35,7 +33,8 @@ class LoginViewModel : ViewModel() {
             loginError = null
             try {
                 val request = LoginRequest(email, password)
-                val response = RetrofitClient.api.login(request)
+                val response = api.login(request)
+                //val response = RetrofitClient.api.login(request)
 
                 if (response.isSuccessful && response.body()?.type == "Success") {
                     val userData = response.body()?.data
@@ -63,7 +62,8 @@ class LoginViewModel : ViewModel() {
             loginError = null
             try {
                 val request = RegisterRequest(registerName, registerEmail, registerPassword)
-                val response = RetrofitClient.api.register(request)
+                val response = api.register(request)
+                //val response = RetrofitClient.api.register(request)
 
                 if (response.isSuccessful) {
                     val userData = response.body()?.data

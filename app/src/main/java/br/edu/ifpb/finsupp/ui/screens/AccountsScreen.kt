@@ -24,12 +24,13 @@ import br.edu.ifpb.finsupp.ui.components.AppDrawer
 import br.edu.ifpb.finsupp.ui.theme.*
 import br.edu.ifpb.finsupp.ui.viewmodel.AccountsViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountsScreen(
     userName: String,
-    viewModel: AccountsViewModel = viewModel(),
+    viewModel: AccountsViewModel = koinViewModel(),
     onLogout: () -> Unit,
     onNavigateToHome: () -> Unit,
     onNavigateToAddAccount: () -> Unit,

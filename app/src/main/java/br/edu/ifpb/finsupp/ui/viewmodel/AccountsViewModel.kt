@@ -6,10 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.edu.ifpb.finsupp.network.model.*
-import br.edu.ifpb.finsupp.network.RetrofitClient
+import br.edu.ifpb.finsupp.network.service.AccountApi
+import br.edu.ifpb.finsupp.network.service.BankApi
 import kotlinx.coroutines.launch
 
-class AccountsViewModel : ViewModel() {
+class AccountsViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
 
     private var _allAccounts = listOf<AccountApiData>()
 
@@ -35,13 +36,15 @@ class AccountsViewModel : ViewModel() {
             isLoading = true
             try {
                 // 1. Carrega lista de bancos para mapear ID -> Nome
-                val banksResponse = RetrofitClient.bankApi.getBanks()
+                //val banksResponse = RetrofitClient.bankApi.getBanks()
+                val banksResponse = bankApi.getBanks()
                 if (banksResponse.isSuccessful) {
                     banksMap = banksResponse.body()?.dataList?.associate { it.id to it.name } ?: emptyMap()
                 }
 
                 // 2. Carrega as contas do usuário
-                val accountsResponse = RetrofitClient.accountApi.getAccounts()
+                //val accountsResponse = RetrofitClient.accountApi.getAccounts()
+                val accountsResponse = accountApi.getAccounts()
                 if (accountsResponse.isSuccessful) {
                     _allAccounts = accountsResponse.body()?.dataList ?: emptyList()
                     applySearchFilter() // Atualiza a lista visual
@@ -76,7 +79,8 @@ class AccountsViewModel : ViewModel() {
     fun deleteAccount(account: AccountApiData) {
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.accountApi.deleteAccount(account.id)
+                //val response = RetrofitClient.accountApi.deleteAccount(account.id)
+                val response = accountApi.deleteAccount(account.id)
                 if (response.isSuccessful) {
                     toastMessage = "Conta deletada!"
                     // Remove localmente para não precisar recarregar tudo da API

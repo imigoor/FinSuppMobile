@@ -5,12 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.edu.ifpb.finsupp.network.RetrofitClient
 import br.edu.ifpb.finsupp.network.model.*
+import br.edu.ifpb.finsupp.network.service.AccountApi
+import br.edu.ifpb.finsupp.network.service.BankApi
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-class AddAccountViewModel : ViewModel() {
+class AddAccountViewModel(private val accountApi: AccountApi, private val bankApi: BankApi) : ViewModel() {
 
     // estado do formulario
     var description by mutableStateOf("")
@@ -45,7 +46,8 @@ class AddAccountViewModel : ViewModel() {
         viewModelScope.launch {
             isLoadingBanks = true
             try {
-                val response = RetrofitClient.bankApi.getBanks()
+                //val response = RetrofitClient.bankApi.getBanks()
+                val response = bankApi.getBanks()
                 if (response.isSuccessful) {
                     bankList = response.body()?.dataList ?: emptyList()
                 } else {
@@ -77,7 +79,8 @@ class AddAccountViewModel : ViewModel() {
                     paymentDueDay = dueDay.toIntOrNull() ?: 10
                 )
 
-                val response = RetrofitClient.accountApi.createAccount(request)
+                //val response = RetrofitClient.accountApi.createAccount(request)
+                val response = accountApi.createAccount(request)
 
                 if (response.isSuccessful) {
                     toastMessage = "Conta Criada com Sucesso!"

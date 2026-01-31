@@ -26,9 +26,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.edu.ifpb.finsupp.ui.theme.*
 import br.edu.ifpb.finsupp.ui.viewmodel.LoginViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun LoginScreen(loginViewModel: LoginViewModel = viewModel(), onLoginSuccess: (String) -> Unit) {
+fun LoginScreen(loginViewModel: LoginViewModel = koinViewModel(), onLoginSuccess: (String) -> Unit) {
     var isLoginTab by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
