@@ -6,6 +6,8 @@ import br.edu.ifpb.finsupp.network.service.BankApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.OkHttpClient
+import br.edu.ifpb.finsupp.network.service.TransactionApi
+import br.edu.ifpb.finsupp.network.service.CategoryApi
 
 object RetrofitClient {
     private const val BASE_URL = "https://finsupp-api-472774405ab6.herokuapp.com/"
@@ -39,5 +41,13 @@ object RetrofitClient {
 
     val bankApi: BankApi by lazy {
         retrofit.create(BankApi::class.java)
+    }
+
+    val transactionApi: TransactionApi by lazy {
+        retrofit.create(TransactionApi::class.java)
+    }
+
+    val categoryApi: CategoryApi by lazy {
+        retrofit.create(CategoryApi::class.java)
     }
 }

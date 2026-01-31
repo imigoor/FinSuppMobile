@@ -12,8 +12,8 @@ import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
 class LoginViewModel : ViewModel() {
-    var email by mutableStateOf("igor@gmail.com")
-    var password by mutableStateOf("igor123")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
 
     var registerName by mutableStateOf("")
     var registerEmail by mutableStateOf("")

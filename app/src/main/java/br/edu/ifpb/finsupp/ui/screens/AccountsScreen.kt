@@ -33,7 +33,8 @@ fun AccountsScreen(
     onLogout: () -> Unit,
     onNavigateToHome: () -> Unit,
     onNavigateToAddAccount: () -> Unit,
-    onNavigateToEditAccount: (AccountApiData) -> Unit
+    onNavigateToEditAccount: (AccountApiData) -> Unit,
+    onNavigateToTransactions: () -> Unit
 ) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -61,6 +62,12 @@ fun AccountsScreen(
                 onNavigateToHome = onNavigateToHome,
                 onNavigateToAccounts = {
                     scope.launch { drawerState.close() }
+                },
+                onNavigateToTransactions = { // <--- Conectado aqui
+                    scope.launch {
+                        drawerState.close()
+                        onNavigateToTransactions()
+                    }
                 },
                 onLogout = {
                     viewModel.resetState() // limpa o estado antes de sair
