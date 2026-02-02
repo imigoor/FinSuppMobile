@@ -61,12 +61,6 @@ fun AppDrawer(
         )
 
         DrawerItem(
-            icon = Icons.Default.Category,
-            label = "Categories",
-            onClick = { scope.launch { drawerState.close() } } // Futuro
-        )
-
-        DrawerItem(
             icon = Icons.Default.SwapHoriz,
             label = "Transactions",
             onClick = {
